@@ -1,7 +1,12 @@
-type Matrix = {
+export type Matrix = {
   rows: number;
   cols: number;
   array: number[][];
+};
+
+export type Vector = {
+  array: number[];
+  n: number;
 };
 
 export const newMatrix = (m: number, n: number, value = 0): Matrix => {
@@ -40,3 +45,45 @@ export const writeToDiagonal = (m: Matrix, value: number, diag = 0) => {
     i++;
   }
 };
+
+export const newVector = (n: number, value = 0): Vector => {
+  const array = new Array<number>(n).fill(value)
+  return {
+    array,
+    n
+  }
+}
+
+export const cloneVector = (v: Vector): Vector => {
+  return {
+    array: [...v.array],
+    n: v.n
+  };
+}
+
+export const matVecMult = (M: Matrix, v: Vector) => {
+  if (M.cols !== v.n) {
+    throw new Error(`Mismatching dimensions: ${M.cols} x ${v.n}`);
+  }
+  const out = newVector(v.n);
+  for (let i = 0; i < M.rows; i++) {
+    let acum = 0;
+    for (let j = 0; j < M.cols; j++) {
+      acum += M.array[i][j] * v.array[j];
+    }
+    out.array[i] = acum;
+  }
+  return out;
+}
+export const addVec = (v1: Vector, v2: Vector): Vector => {
+  return {
+    array: v1.array.map((v, idx) => v + v2.array[idx]),
+    n: v1.n
+  }
+}
+export const multVec = (v: Vector, lambda: number): Vector => {
+  return {
+    array: v.array.map((v, idx) => v * lambda),
+    n: v.n
+  }
+}

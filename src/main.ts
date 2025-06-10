@@ -1,4 +1,4 @@
-import { newMatrix, printMatrix, writeToDiagonal } from "./matrix";
+import { addVec, cloneVector, Matrix, matVecMult, multVec, newMatrix, printMatrix, Vector, writeToDiagonal } from "./matrix";
 import {
   createPoly,
   isZeroPoly,
@@ -41,6 +41,30 @@ const odeFromTF = (tf: TF): ODE => {
     inputs: tf.num,
   };
 };
+
+const getStateSpaceRealizationMatrices = (tf: TF) => {
+  const n = tf.den.coeffs.length - 1; // Output
+  const A = newMatrix(n, n);
+  writeToDiagonal(A, 1, 1);
+  for (let j = 0; j < n; j++) {
+    A.array[n - 1][j] =
+      -tf.den.coeffs[j] / tf.den.coeffs[n];
+  }
+
+  const B = newMatrix(n, 1, 0);
+  B.array[n - 1][0] = 1 / tf.den.coeffs[n];
+
+  const C = newMatrix(1, n, 0);
+  for (let j = 0; j < n; j++) {
+    C.array[0][j] = tf.num.coeffs[j];
+  }
+
+  const D = newMatrix(1, 1, 0);
+
+  return { A, B, C, D };
+
+};
+
 
 const getMatricesFromODE = (ode: ODE) => {
   const nOutCoeffs = ode.outputs.coeffs.length;
@@ -92,6 +116,22 @@ const polyRepr = (poly: Poly, varName = "s") => {
   return monomials.join(" + ");
 };
 
+const simulateRK45 = (A: Matrix, B: Matrix, C: Matrix, D: Matrix, x0: Vector, ut: (t: number) => Vector, maxTime: number, n: number) => {
+
+  const steps: Vector[] = [];
+  let x = cloneVector(x0);
+  const dt = maxTime / (n - 1);
+  for (let t = 0; t <= maxTime; t += dt) {
+    const u = ut(t);
+    const dx = multVec(addVec(matVecMult(A, x), matVecMult(B, u)), dt);
+    x = addVec(x, dx);
+    steps.push(x);
+  }
+
+  return steps;
+
+}
+
 const printTF = (tf: TF) => {
   const numStr = polyRepr(tf.num);
   const denStr = polyRepr(tf.den);
@@ -104,14 +144,16 @@ const printTF = (tf: TF) => {
   )}${denStr}`;
 };
 
-const testTf = createTF([1], [1, 2, 3]);
-const testODE = odeFromTF(testTf);
-const matrices = getMatricesFromODE(testODE);
+const testTf = createTF([1, 0], [1, 1]);
+// const testTf2 = createTF([10 / 9, 4 / 9], [1, -2, 3]);
+// console.log(testTf2)
+console.log(testTf);
+const { A, B, C, D } = getStateSpaceRealizationMatrices(testTf);
+console.log({ A: A.array, B: B.array, C: C.array })
 
-console.log(printTF(testTf));
-console.log(printTF(multiplyTF(testTf, testTf)));
+const res = simulateRK45(A, B, C, D, { array: [2], n: 1 }, (t: number) => {
+  return { array: [1], n: 1 };
+}, 10, 100);
 
-const { q, r } = polynomialDivision(createPoly([1, 2, 1]), createPoly([1, 1]));
-console.log(q);
-console.log(polyRepr(q));
-console.log(polyRepr(r));
+console.log(res.map(v => v.array[0]).join("\n"))
+
